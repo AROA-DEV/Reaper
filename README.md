@@ -27,14 +27,14 @@ Saves time and effort in copying files.
 To install Reaper, follow these steps:
 
 1. Download the script from the Reaper GitHub page.
-2. Move the script to your desired location.
-3. Double-click on the script to run it.
+2. Run USB-Maker.bat
+3. It will ask for the USB letter, were they will be muved
 Note: Before running the script, make sure that you are logged in to Windows as the user whose files you want to copy.
 
 ### Usage
 To use Reaper, follow these steps:
 
-1. Double-click on the script to run it.
+1. Double-click on the Reaper script to run it, the Reaper-Ultimate.bat should work on any windows devaice.
 2. Select the directories you want to copy from by entering the corresponding numbers.
 2. Press Enter to start the copying process.
 Once the copying process is complete, you can access your copied files from the desired location.
