@@ -1,34 +1,36 @@
-# Reaper
-Reaper is an automated script designed to simplify the process of copying files from various repositories such as documents, images, and desktop to an external USB drive. The tool is available as a batch script and can be run on any Windows-based system.
+# Reaper (GitHub Project)
+Reaper is an open-source attack tool available on GitHub that allows users to automate the process of copying files from the Documents, Images, and Desktop repositories. This batch script is designed to be run on Windows operating systems while the user is logged in, and it does not breach any of the security measures implemented by Windows.
 
-### Overview
+The Reaper script is very user-friendly and easy to use. Once you download the script and move it to your USB (128GB minimum), you can run it by double-clicking on the file. It will prompt you to select the directories you want to copy from, which include Documents, Images, and Desktop repositories.
 
-Reaper is an easy-to-use script that automates the process of copying files to an external USB drive. The script is designed to copy all files from the documents, images, and desktop repositories to a specified external drive. This simplifies the process of backing up important files and folders and makes it easier to transfer files from one device to another.
+Reaper comes in two different versions. There is one for the Spanish version of Windows and another for the English version, ensuring that users can use the script regardless of their preferred language setting.
+
+Reaper uses the GNU General Public License v3.0 (GPL-3.0), which means that it is free to use, modify, and distribute. However, the license does require that any modified versions of Reaper also be released under the same GPL-3.0 license.
 
 ### Features
+Reaper offers the following features:
 
-The key features of Reaper include:
-
-Automated copying: Reaper is designed to automate the process of copying files from various repositories to an external drive. This eliminates the need to manually copy files, which can be time-consuming and error-prone.
-
-Easy-to-use interface: The script has an easy-to-use interface that prompts the user to specify the USB letter and directories to copy.
-
-Customizable: Reaper is highly customizable, allowing users to choose which directories to copy and exclude specific files or folders from the copy process.
-
-Lightweight: The script is lightweight and can be easily downloaded and moved to an external USB drive.
+Automated copying of files from Documents, Images, and Desktop repositories.
+Easy to use and user-friendly interface.
+Customizable options to select directories to copy.
+Does not breach any security measures implemented by Windows.
+Saves time and effort in copying files.
 
 ### Installation
+To install Reaper, follow these steps:
 
+1. Download the script from the Reaper GitHub page.
+2. Move the script to your desired location.
+3. Double-click on the script to run it.
+Note: Before running the script, make sure that you are logged in to Windows as the user whose files you want to copy.
+
+### Usage
 To use Reaper, follow these steps:
 
-Download the Reaper script from the project's GitHub repository.
-Move the script to the external USB drive that you will use to copy the files.
-Double-click the script to run it.
-When prompted, enter the letter of the external USB drive.
-Enter the directories you wish to copy.
-Contributing
-
-Reaper is an open-source project, and contributions are welcome. If you wish to contribute to the project, you can fork the repository, make your changes, and submit a pull request. Please ensure that your code follows the project's coding guidelines and that you test your changes before submitting them.
+1. Double-click on the script to run it.
+2. Select the directories you want to copy from by entering the corresponding numbers.
+2. Press Enter to start the copying process.
+Once the copying process is complete, you can access your copied files from the desired location.
 
 ### License
 
