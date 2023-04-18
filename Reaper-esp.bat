@@ -1,5 +1,8 @@
 @echo off
 echo.
+echo .
+echo Reaper V-0.1
+echo .
 echo.
 mkdir Copy
 cd Copy

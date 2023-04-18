@@ -1,6 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
+echo .
+echo Reaper V-0.1
+echo .
+
 set /p usb_drive="Please enter the drive letter of your USB: "
 set /p machine_name="Please enter the name of this machine: "
 
