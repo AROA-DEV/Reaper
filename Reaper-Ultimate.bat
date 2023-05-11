@@ -19,7 +19,7 @@ echo Public IP: %publicIP% >> %filename%
 :: Get list of installed apps
 reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "DisplayName" >> %filename%
 
-:: uncomet lines with ":: #deactivated " to activate the feature
+:: uncomet lines with " " to activate the feature
 :: copy the private key to the users .ssh folder
 :: #deactivated xcopy /E /Y "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
 :: Set target server
