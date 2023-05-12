@@ -24,21 +24,23 @@ Does not breach any security measures implemented by Windows.
 Saves time and effort in copying files.
 
 ### Installation
+Prerequisites:
+- USB device that you will run Reaper from. (recommendation of 32gb minimum)
+- create a repository for your config file.
+
 To install Reaper, follow these steps:
 
-1. Download the script from the Reaper GitHub page.
+1. clone the repo from the Reaper GitHub page.
 2. Run USB-Maker.bat
-3. It will ask for the USB letter, were they will be moved
-Note: Before running the script, make sure that you are logged in to Windows as the user whose files you want to copy.
+3. It will ask for the USB letter, were the files will be copied to
 
 ### Usage
 To use Reaper, follow these steps:
 
-1. Double-click on the Reaper script to run it, the Reaper-Ultimate.bat should work on any windows device.
-2. Select the directories you want to copy from by entering the corresponding numbers.
-2. Press Enter to start the copying process.
-Once the copying process is complete, you can access your copied files from the desired location.
-
+1. Double-click on the Reaper script to run it, the Reaper-Ultimate.bat should work on any Windows device, by default its set to copy the desktop, images, downloads, documents and OneDrive directories.
+2. The script will run automatically with out of needing user interaction, it will fist check that the script remote config has the "Active=true" ass a fail safe, then it will get the rest of the config, and verify that all the needed variables are set.
+3. After all of the configuration is set and verified, the script will create a file with all of the host data with the name of the user that its logged in, in the USB home directory
+4. Then it will create a folder with the name of the target machine and copy all of the targeted directories.
 ### License
 
 Reaper is licensed under the GNU General Public License v3.0 (GPL-3.0). This means that the software is free to use, modify, and distribute, as long as any modifications or derivative works are also licensed under the GPL-3.0 license. The GPL-3.0 license also requires that any distribution of the software includes the source code and a copy of the license.
