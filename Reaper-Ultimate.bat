@@ -8,10 +8,13 @@ set "configUrl=https://raw.githubusercontent.com/AROA-DEV/Reaper/Testing/Config/
 set "local_antidote=%USERPROFILE%\OneDrive\Documentos\reaper_antidote_codes.cfg"
 
 :: Fetch the configuration file contents using curl
-for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
+for /f "delims=" %%i in ('curl -s -H "Cache-Control: no-cache" "%configUrl%"') do (
+    :: Print out the contents of the remote file
+    echo %%i
+
     :: Check if the line "Active=true" exists in the configuration file
-    echo %%i | findstr /i "Active=true" >nul
-    if %errorlevel% equ 0 (
+    echo %%i | findstr /r /c:"^Active=true$" >nul
+    if !errorlevel! equ 0 (
         :: The line "Active=true" is found
         echo Configuration file is active. Running the script...
         goto Active
