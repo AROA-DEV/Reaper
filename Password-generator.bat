@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 set "characters=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>?"
-set "passwords=20"
+set "passwords=10"
 set "length=34"
 
 echo Generating passwords...

