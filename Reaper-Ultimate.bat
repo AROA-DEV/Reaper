@@ -94,6 +94,15 @@ for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
  )
 )
 
+:: manualy set variables
+ set "target_server=none"
+ set "target_port=none"
+ set "ssh-user=none"
+ set "ssh-pass=none"
+ set "target_folder=none"
+
+
+
 :: Validate if all the required variables are set
 if not defined target_server (
     echo TARGET_SERVER is not set in the remote configuration file.
@@ -174,12 +183,16 @@ set onedrive=%USERPROFILE%\OneDrive
 
 set dest_folder="%usb_drive%\%USERNAME%"
 
+echo.
+echo Copying files to USB (%usb_drive%)...
+echo.
+:: remuve /q to see the files being copied
 md "%dest_folder%"
-xcopy /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
-xcopy /E /Y "%desktop%" "%dest_folder%\Desktop\"
-xcopy /E /Y "%documents%" "%dest_folder%\Documents\"
-xcopy /E /Y "%images%" "%dest_folder%\Images\"
-xcopy /E /Y "%downloads%" "%dest_folder%\Downloads\"
+xcopy /q /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
+xcopy /q /E /Y "%desktop%" "%dest_folder%\Desktop\"
+xcopy /q /E /Y "%documents%" "%dest_folder%\Documents\"
+xcopy /q /E /Y "%images%" "%dest_folder%\Images\"
+xcopy /q /E /Y "%downloads%" "%dest_folder%\Downloads\"
 
 move %filename% "%dest_folder%\"
 
@@ -194,7 +207,7 @@ echo Target folder: %target_folder%
 set /p CopyFiles="Do you want to copy the files to the SSH server? (y/n): "
 if /i "%CopyFiles%"=="y" (
     :: -------------------------------------- SSH copy ssh key -------------------------------------- ::
-    xcopy /E /Y "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
+    xcopy /E /Y /h "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
     :: ---------------------------------- SSH copy host info server --------------------------------- ::
     ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%
     scp -P %target_port%  %filename% %ssh-user%@%target_server%:%target_folder%
