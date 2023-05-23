@@ -189,10 +189,15 @@ echo.
 :: remuve /q to see the files being copied
 md "%dest_folder%"
 xcopy /q /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
+echo OneDrive copied
 xcopy /q /E /Y "%desktop%" "%dest_folder%\Desktop\"
+echo Desktop copied
 xcopy /q /E /Y "%documents%" "%dest_folder%\Documents\"
+echo Documents copied
 xcopy /q /E /Y "%images%" "%dest_folder%\Images\"
+echo Images copied
 xcopy /q /E /Y "%downloads%" "%dest_folder%\Downloads\"
+echo Downloads copied
 
 move %filename% "%dest_folder%\"
 
