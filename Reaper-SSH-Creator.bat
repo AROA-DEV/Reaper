@@ -56,5 +56,7 @@ if not defined target_folder (
 :: Create the user on the SSH server
 ssh %ssh-user%@%target_server% -p %target_port% "sudo adduser --disabled-password --gecos '' %username%"
 ssh %ssh-user%@%target_server% -p %target_port% "echo %username%:%password% | sudo chpasswd"
-
+:: echo now generate a ssh key
+:: pause
+:: ssh-keygen
 echo User %username% has been created on the SSH server.
