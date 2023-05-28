@@ -184,32 +184,33 @@ set "onedrive=%USERPROFILE%\OneDrive\"
 set "dest_folder=%usb_drive%\%USERNAME%"
 
 set "robo_flags=/E /DCOPY:DA /COPY:DAT /NC /NS /NP /BYTES /R:5 /W:10 /FFT /MT:32 /LOG+:%usb_drive%\%USERNAME%\robocopy.log > nul"
-
+cls
 echo.
 echo Copying files to USB (%usb_drive%)...
 echo.
 
-echo %robo_flags%
-pause
 :: remuve /q to see the files being copied
 md %dest_folder%
 move %filename% "%dest_folder%\"
+echo start copying onedrive
 robocopy %onedrive% %dest_folder%\OneDrive\ %robo_flags%
 echo OneDrive copied
+echo start copying desktop
 robocopy %desktop% %dest_folder%\Desktop\ %robo_flags%
 echo Desktop copied
+echo start copying documents
 robocopy %documents% %dest_folder%\Documents\ %robo_flags%
 echo Documents copied
+echo start copying images
 robocopy %images% %dest_folder%\Images\ %robo_flags%
 echo Images copied
+echo start copying downloads
 robocopy %downloads% %dest_folder%\Downloads\ %robo_flags%
 echo Downloads copied
 
-
-
-
 echo Files copied successfully to USB (%usb_drive%)!
-
+pause
+cls
 echo SSH-USER: %ssh-user%
 echo Target server:%target_server%
 echo Target port: %target_port%
