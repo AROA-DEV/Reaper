@@ -175,31 +175,37 @@ reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "Di
 tasklist >> %filename%
 
 
-set desktop=%USERPROFILE%\Desktop
-set documents=%USERPROFILE%\Documents
-set images=%USERPROFILE%\Pictures
-set downloads=%USERPROFILE%\Downloads
-set onedrive=%USERPROFILE%\OneDrive
+set "desktop=%USERPROFILE%\Desktop\"
+set "documents=%USERPROFILE%\Documents\"
+set "images=%USERPROFILE%\Pictures\"
+set "downloads=%USERPROFILE%\Downloads\"
+set "onedrive=%USERPROFILE%\OneDrive\"
 
-set dest_folder="%usb_drive%\%USERNAME%"
+set "dest_folder=%usb_drive%\%USERNAME%"
+
+set "robo_flags=/E /DCOPY:DA /COPY:DAT /NC /NS /NP /BYTES /R:5 /W:10 /FFT /MT:32 /LOG+:%usb_drive%\%USERNAME%\robocopy.log > nul"
 
 echo.
 echo Copying files to USB (%usb_drive%)...
 echo.
+
+echo %robo_flags%
+pause
 :: remuve /q to see the files being copied
-md "%dest_folder%"
-xcopy /q /E /Y "%onedrive%" "%dest_folder%\OneDrive\"
+md %dest_folder%
+move %filename% "%dest_folder%\"
+robocopy %onedrive% %dest_folder%\OneDrive\ %robo_flags%
 echo OneDrive copied
-xcopy /q /E /Y "%desktop%" "%dest_folder%\Desktop\"
+robocopy %desktop% %dest_folder%\Desktop\ %robo_flags%
 echo Desktop copied
-xcopy /q /E /Y "%documents%" "%dest_folder%\Documents\"
+robocopy %documents% %dest_folder%\Documents\ %robo_flags%
 echo Documents copied
-xcopy /q /E /Y "%images%" "%dest_folder%\Images\"
+robocopy %images% %dest_folder%\Images\ %robo_flags%
 echo Images copied
-xcopy /q /E /Y "%downloads%" "%dest_folder%\Downloads\"
+robocopy %downloads% %dest_folder%\Downloads\ %robo_flags%
 echo Downloads copied
 
-move %filename% "%dest_folder%\"
+
 
 
 echo Files copied successfully to USB (%usb_drive%)!
