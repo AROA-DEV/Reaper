@@ -91,9 +91,9 @@ for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
  ) else if /i "%%a"=="COPY_FILES" (
  :: Get the choice to copy files from the remote configuration
  set "CopyFiles=%%b"
- ) else if /i "%%a"=="ROBO_COPY" (
+ ) else if /i "%%a"=="ROBO_FLAGS" (
  :: Get the choice to copy files from the remote configuration
- set "robo_copy=%%b"
+ set "robo_flags=%%b"
  )
 )
 
@@ -135,7 +135,7 @@ if not defined target_folder (
     echo target folder is set to %target_folder% by defoult
     pause
 )
-if not defined robo_copy (
+if not defined robo_flags (
     echo Robocopy flags are not set in the remote configuration file.
     set "robo_flags=/E /COPY:DAT /R:5 /W:10 /ETA"  :: Set default
     echo Robocopy flags are set %robo_flags% by defoult
