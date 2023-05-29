@@ -91,6 +91,9 @@ for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
  ) else if /i "%%a"=="COPY_FILES" (
  :: Get the choice to copy files from the remote configuration
  set "CopyFiles=%%b"
+ ) else if /i "%%a"=="ROBO_COPY" (
+ :: Get the choice to copy files from the remote configuration
+ set "robo_copy=%%b"
  )
 )
 
@@ -132,7 +135,12 @@ if not defined target_folder (
     echo target folder is set to %target_folder% by defoult
     pause
 )
-
+if not defined robo_copy (
+    echo Robocopy flags are not set in the remote configuration file.
+    set "robo_flags=/E /COPY:DAT /R:0 /W:0 /ETA"  :: Set default
+    echo Robocopy flags are set %robo_flags% by defoult
+    pause
+)
 :: --------------------------------- Safety Checks Done --------------------------------- ::
 
 :: set usb leter
@@ -173,7 +181,7 @@ wmic path CIM_VideoControllerResolution get HorizontalResolution, VerticalResolu
 reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "DisplayName" >> %filename%
 :: Get list of running processes
 tasklist >> %filename%
-
+ 
 
 set "desktop=%USERPROFILE%\Desktop\"
 set "documents=%USERPROFILE%\Documents\"
@@ -183,7 +191,6 @@ set "onedrive=%USERPROFILE%\OneDrive\"
 
 set "dest_folder=%usb_drive%\%USERNAME%"
 
-set "robo_flags=/E /DCOPY:DA /COPY:DAT /NC /NS /NP /BYTES /R:5 /W:10 /FFT /MT:32 /LOG+:%usb_drive%\%USERNAME%\robocopy.log > nul"
 cls
 echo.
 echo Copying files to USB (%usb_drive%)...
