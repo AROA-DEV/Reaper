@@ -137,7 +137,7 @@ if not defined target_folder (
 )
 if not defined robo_copy (
     echo Robocopy flags are not set in the remote configuration file.
-    set "robo_flags=/E /COPY:DAT /R:0 /W:0 /ETA"  :: Set default
+    set "robo_flags=/E /COPY:DAT /R:5 /W:10 /ETA"  :: Set default
     echo Robocopy flags are set %robo_flags% by defoult
     pause
 )
