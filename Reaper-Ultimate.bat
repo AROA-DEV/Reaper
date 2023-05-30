@@ -41,7 +41,7 @@ if exist "Local-Config.cfg" (
     if %errorlevel% equ 0 (
         :: The line "Active=true" is found in the local configuration file
         echo Local configuration file is active. Running the script...
-        set "config_file=Local-Config.cfg"
+        set "config_file=type Local-Config.cfg"
         goto Active    
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false" in the local configuration file
