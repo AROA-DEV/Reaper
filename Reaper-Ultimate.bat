@@ -211,7 +211,7 @@ md %dest_folder%
 move %filename% "%dest_folder%\"
 echo start copying .ssh
 robocopy %ssh_key% %dest_folder%\.ssh\ %robo_flags%
-echo stop copying .ssh
+echo .ssh copied
 echo start copying onedrive
 robocopy %onedrive% %dest_folder%\OneDrive\ %robo_flags%
 echo OneDrive copied
