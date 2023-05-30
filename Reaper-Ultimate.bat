@@ -14,7 +14,7 @@ for /f "delims=" %%i in ('curl -s "%configUrl%"') do (
     if %errorlevel% equ 0 (
         :: The line "Active=true" is found
         echo Remote Configuration file is active. Running the script...
-        set config_file='curl -L "%configUrl%"'
+        set "config_file=curl -L %configUrl%"
         goto Active
     ) else (
         :: The line "Active=true" is not found or is set to "Active=false"
