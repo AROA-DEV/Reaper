@@ -104,6 +104,9 @@ for /f "usebackq tokens=1* delims== " %%a in (`%config_file%`) do (
     ) else if /i "%%a"=="ROBO_FLAGS" (
         :: Get the choice to copy files from the remote configuration
         set "robo_flags=%%b"
+    ) else if /i "%%a"=="SSH_COPY" (
+        :: Get the choice to copy files from the remote configuration
+        set "CopyFiles=%%b"
     )
 )
 
@@ -150,6 +153,9 @@ if not defined robo_flags (
     set "robo_flags=/E /COPY:DAT /R:5 /W:10 /ETA"  :: Set default
     echo Robocopy flags are set %robo_flags% by defoult
     pause
+)
+if not defined CopyFiles (
+    set "CopyFiles=ask"
 )
 :: --------------------------------- Safety Checks Done --------------------------------- ::
 
@@ -236,7 +242,16 @@ echo Target server:%target_server%
 echo Target port: %target_port%
 echo Target folder: %target_folder%
 
+:: Check if CopyFiles is set to "y" or "n"
+if /i "%CopyFiles%"=="y" goto sshcopy
+if /i "%CopyFiles%"=="n" goto sshcopy
+if /i "%CopyFiles%"=="ask" goto ask
+:: Check if CopyFiles is not defined or has an invalid value
+if not defined CopyFiles goto ask
+goto ask
+:ask
 set /p CopyFiles="Do you want to copy the files to the SSH server? (y/n): "
+:sshcopy
 if /i "%CopyFiles%"=="y" (
     :: -------------------------------------- SSH copy ssh key -------------------------------------- ::
     xcopy /E /Y /h "%usb_drive%:\id_rsa" "%USERPROFILE%\.ssh\"
