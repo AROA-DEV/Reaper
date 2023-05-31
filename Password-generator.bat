@@ -1,9 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-set "characters=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>?"
-set "passwords=10"
-set "length=34"
+set "characters=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*()_-+=<>?"
+set "passwords=50"
+set "length=10"
 
 echo Generating passwords...
 
@@ -31,7 +31,7 @@ for /L %%i in (1,1,%passwords%) do (
             )
             if "!duplicateFound!"=="false" (
                 set "generatedPasswords=!generatedPasswords! !generated_password!"
-                echo Password %%i: !generated_password!
+                echo "!generated_password!",
             )
         ) else (
             echo Password %%i: Error generating password!
@@ -44,5 +44,5 @@ for /L %%i in (1,1,%passwords%) do (
         goto generate_password
     )
 )
-
+pause
 endlocal
