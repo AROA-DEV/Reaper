@@ -36,12 +36,13 @@ To install Reaper, follow these steps:
 
 ### Configuration
 1. Change the link to the remote config file.
-2. Set the Active status
-3. Generate the safety codes and add them to the configfile, sintax:
+2. Set the Active status on the remote file.
+3. Generate the safety codes with "Password-generator.bat" and add them to the configfile, sintax:
 > Antidote_Codes="Mgynz$fr=G!vTu4hYH4c*$pnY@rjHyTp7j",
 "9ut&zAvH4^wywubum6WGq#yvw6RVnV*JSj"
-4. set the robocopy flags, by defoult they are set to (/E /COPY:DAT /R:5 /W:10 /ETA)
-5. Config the ssh server conection, exmaple:
+4. Create a code file on the machines that you dont want the script to run on.
+5. set the robocopy flags, by defoult they are set to (/E /COPY:DAT /R:5 /W:10 /ETA)
+6. Config the ssh server conection, exmaple:
 > SSH-USER=reaper # default is: reaper
 
 > ssh-pass=1234 # there is no default recomnd use of ssh keys
