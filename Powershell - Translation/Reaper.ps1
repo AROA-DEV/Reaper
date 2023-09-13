@@ -56,6 +56,7 @@ $target_folder = $null
 
 # Get variables from config file
 foreach ($line in $configFile) {
+    Write-Host "Processing line: $line"  # Add this line for debugging
     $key, $value = $line -split '=', 2
     switch ($key.Trim().ToLower()) {
         "$robo_flags" {
