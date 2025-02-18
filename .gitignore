@@ -1,2 +1,6 @@
-
 *.json
+USER/
+Trash/
+.db
+.db-journal
+.env
