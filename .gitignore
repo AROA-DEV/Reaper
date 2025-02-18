@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 *.json
 USER/
 Trash/
 .db
 .db-journal
 .env
+=======
+
+*.json
+Powershell - Translation/Variable-Colect.ps1
+>>>>>>> origin/main
