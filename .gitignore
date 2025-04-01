@@ -1,7 +1,7 @@
 .json
 .env
-.db
-.db-journal
+*.db
+*.db-journal
 .env
 *.log
 *.exe

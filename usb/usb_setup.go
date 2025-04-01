@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,88 +12,9 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-type PriorityConfig struct {
-	Directories []string `json:"directories"`
-	Files       []string `json:"files"`
-}
+// Note: Using types defined in main.go
 
-type BackupConfig struct {
-	USBSize        int64          `json:"usb_size"`
-	Mode           string         `json:"mode"`
-	FileExtensions []string       `json:"file_extensions"`
-	MinSize        int64          `json:"min_size"`
-	MaxSize        int64          `json:"max_size"`
-	Priority       PriorityConfig `json:"priority"`
-}
-
-func getRemovableDrives() ([]string, error) {
-	var drives []string
-	driveBits, err := windows.GetLogicalDrives()
-	if err != nil {
-		return drives, err
-	}
-	for i := 0; i < 26; i++ {
-		if driveBits&(1<<uint(i)) != 0 {
-			driveLetter := string('A'+i) + ":\\" // Drive letter
-			driveType := windows.GetDriveType(windows.StringToUTF16Ptr(driveLetter))
-			if driveType == windows.DRIVE_REMOVABLE || driveType == windows.DRIVE_FIXED {
-				// For fixed drives, check if it's external
-				if driveType == windows.DRIVE_FIXED {
-					isExternal, err := isExternalDrive(driveLetter)
-					if err != nil || !isExternal {
-						continue
-					}
-				}
-				drives = append(drives, driveLetter)
-			}
-		}
-	}
-	return drives, nil
-}
-
-func isExternalDrive(driveLetter string) (bool, error) {
-	// Enhanced PowerShell command that specifically checks for external drive characteristics
-	cmd := exec.Command("powershell", "-Command", fmt.Sprintf(`
-        $isExternal = $false
-        $drive = Get-WmiObject Win32_DiskDrive | 
-            Where-Object { $_.MediaType -like "*External*" -or 
-                         $_.PNPDeviceID -like "*USB*" -or 
-                         $_.Caption -like "*USB*" -or
-                         $_.Caption -like "*NVMe*" -or
-                         $_.Model -like "*UGreen*" } |
-            ForEach-Object {
-                $partition = Get-WmiObject -Query "ASSOCIATORS OF {Win32_DiskDrive.DeviceID='$($_.DeviceID)'} WHERE AssocClass=Win32_DiskDriveToDiskPartition"
-                $partition | ForEach-Object {
-                    $logical = Get-WmiObject -Query "ASSOCIATORS OF {Win32_DiskPartition.DeviceID='$($_.DeviceID)'} WHERE AssocClass=Win32_LogicalDiskToPartition"
-                    if ($logical.DeviceID -eq '%s:') { $isExternal = $true }
-                }
-            }
-        if ($isExternal) { Write-Output "1" } else {
-            # Secondary check using physical disk info
-            $disk = Get-PhysicalDisk | 
-                Where-Object { Get-Partition -DiskNumber $_.DeviceID | 
-                    Where-Object { $_.DriveLetter -eq '%s' } } |
-                Select-Object BusType, MediaType, FriendlyName
-            if ($disk.BusType -in @("USB", "SATA", "NVMe") -and 
-                ($disk.FriendlyName -like "*USB*" -or 
-                 $disk.FriendlyName -like "*External*" -or
-                 $disk.FriendlyName -like "*UGreen*" -or
-                 $disk.MediaType -eq "External hard disk media")) {
-                Write-Output "1"
-            } else {
-                Write-Output "0"
-            }
-        }
-    `, driveLetter, driveLetter))
-
-	output, err := cmd.Output()
-	if err != nil {
-		return false, err
-	}
-
-	return strings.TrimSpace(string(output)) == "1", nil
-}
-
+// getDriveSize gets size of a drive using Windows API
 func getDriveSize(drive string) int64 {
 	var free, total, avail uint64
 	path := windows.StringToUTF16Ptr(drive)
@@ -166,7 +86,8 @@ func getPriorityPaths() []string {
 	return paths
 }
 
-func main() {
+// Exported function (renamed from setup_main) to be accessible from main.go
+func SetupMain() {
 	// Get available USB drives
 	drives, err := getRemovableDrives()
 	if err != nil {
@@ -203,7 +124,7 @@ func main() {
 
 	// Get file extensions
 	fmt.Println("\n=== File Extension Configuration ===")
-	extensions := getUserChoice("Select file extensions to backup:", commonExtensions)
+	extensions := getUserChoice("Select file extensions to 'backup':", commonExtensions)
 	if len(extensions) == 0 {
 		fmt.Println("Warning: No file extensions selected. Adding default (.txt, .doc, .pdf)")
 		extensions = []string{".txt", ".doc", ".pdf"}
